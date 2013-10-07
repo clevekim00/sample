@@ -11,16 +11,16 @@ public class GM : MonoBehaviour {
 	float _xPosMoveChk  = 0F;
 	float _xPosMoveChk2 = 0F;
 	
-	public float _timerLim;
-	public float _timerForSpped;
+	public float   _timerLim;
+	public float   _timerForSpped;
 	
 	public UILabel _score;
-	public int _gameScore;
-	public int _gameScorePer;
+	public int     _gameScore;
+	public int     _gameScorePer;
 	
 	// Use this for initialization
 	void Start () {
-	
+		_gameScorePer = 10;
 	}
 	
 	// Update is called once per frame
@@ -41,14 +41,13 @@ public class GM : MonoBehaviour {
 		
 		_BgSetObj.transform.localPosition += new Vector3(_moveSpeed * -1F * Time.deltaTime * 0.5F, 0, 0);
 		
-		if (_xPosMoveChk > 960.0F)
+		if (_xPosMoveChk >= (960.0F + 960.0F / 2.0F))
 		{
 			_xPosMoveChk = 0F;
-			_BgSetObj.transform.localPosition = new Vector3(960 * -1F, 0, 0);
+			_BgSetObj.transform.localPosition = new Vector3(960.0F * -1F, 0, 0);
 			
 			_gameScore += _gameScorePer;
 			_score.text = _gameScore.ToString();
 		}
-		
 	}
 }
