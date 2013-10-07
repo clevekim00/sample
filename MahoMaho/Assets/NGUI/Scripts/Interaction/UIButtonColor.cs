@@ -1,6 +1,6 @@
-﻿//----------------------------------------------
+//----------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2012 Tasharen Entertainment
+// Copyright © 2011-2013 Tasharen Entertainment
 //----------------------------------------------
 
 using UnityEngine;
@@ -10,7 +10,7 @@ using UnityEngine;
 /// </summary>
 
 [AddComponentMenu("NGUI/Interaction/Button Color")]
-public class UIButtonColor : MonoBehaviour
+public class UIButtonColor : UIWidgetContainer
 {
 	/// <summary>
 	/// Target with a widget, renderer, or light that will have its color tweened.
@@ -37,7 +37,6 @@ public class UIButtonColor : MonoBehaviour
 	public float duration = 0.2f;
 
 	protected Color mColor;
-	protected bool mInitDone = false;
 	protected bool mStarted = false;
 	protected bool mHighlighted = false;
 
@@ -45,15 +44,44 @@ public class UIButtonColor : MonoBehaviour
 	/// UIButtonColor's default (starting) color. It's useful to be able to change it, just in case.
 	/// </summary>
 
-	public Color defaultColor { get { return mColor; } set { mColor = value; } }
-
-	void Start () { mStarted = true; if (!mInitDone) Init(); }
-
-	protected virtual void OnEnable () { if (mStarted && mHighlighted) OnHover(UICamera.IsHighlighted(gameObject)); }
-
-	void OnDisable ()
+	public Color defaultColor
 	{
-		if (tweenTarget != null)
+		get
+		{
+#if UNITY_EDITOR
+			if (!Application.isPlaying) return Color.white;
+#endif
+			Start();
+			return mColor;
+		}
+		set
+		{
+#if UNITY_EDITOR
+			if (!Application.isPlaying) return;
+#endif
+			Start();
+			mColor = value;
+		}
+	}
+
+	void Start ()
+	{
+		if (!mStarted)
+		{
+			Init();
+			mStarted = true;
+		}
+	}
+
+	protected virtual void OnEnable ()
+	{
+		if (mStarted && mHighlighted)
+			OnHover(UICamera.IsHighlighted(gameObject));
+	}
+
+	protected virtual void OnDisable ()
+	{
+		if (mStarted && tweenTarget != null)
 		{
 			TweenColor tc = tweenTarget.GetComponent<TweenColor>();
 
@@ -67,7 +95,6 @@ public class UIButtonColor : MonoBehaviour
 
 	protected void Init ()
 	{
-		mInitDone = true;
 		if (tweenTarget == null) tweenTarget = gameObject;
 		UIWidget widget = tweenTarget.GetComponent<UIWidget>();
 
@@ -98,19 +125,23 @@ public class UIButtonColor : MonoBehaviour
 				}
 			}
 		}
+		OnEnable();
 	}
 
-	void OnPress (bool isPressed)
-	{
-		if (!mInitDone) Init();
-		if (enabled) TweenColor.Begin(tweenTarget, duration, isPressed ? pressed : (UICamera.IsHighlighted(gameObject) ? hover : mColor));
-	}
-
-	void OnHover (bool isOver)
+	public virtual void OnPress (bool isPressed)
 	{
 		if (enabled)
 		{
-			if (!mInitDone) Init();
+			if (!mStarted) Start();
+			TweenColor.Begin(tweenTarget, duration, isPressed ? pressed : (UICamera.IsHighlighted(gameObject) ? hover : mColor));
+		}
+	}
+
+	public virtual void OnHover (bool isOver)
+	{
+		if (enabled)
+		{
+			if (!mStarted) Start();
 			TweenColor.Begin(tweenTarget, duration, isOver ? hover : mColor);
 			mHighlighted = isOver;
 		}

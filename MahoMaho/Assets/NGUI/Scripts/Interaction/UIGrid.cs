@@ -1,6 +1,6 @@
 //----------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2012 Tasharen Entertainment
+// Copyright Â© 2011-2013 Tasharen Entertainment
 //----------------------------------------------
 
 using UnityEngine;
@@ -13,7 +13,7 @@ using System.Collections.Generic;
 
 [ExecuteInEditMode]
 [AddComponentMenu("NGUI/Interaction/Grid")]
-public class UIGrid : MonoBehaviour
+public class UIGrid : UIWidgetContainer
 {
 	public enum Arrangement
 	{
@@ -21,12 +21,48 @@ public class UIGrid : MonoBehaviour
 		Vertical,
 	}
 
+	/// <summary>
+	/// Type of arrangement -- vertical or horizontal.
+	/// </summary>
+
 	public Arrangement arrangement = Arrangement.Horizontal;
+
+	/// <summary>
+	/// Maximum children per line.
+	/// If the arrangement is horizontal, this denotes the number of columns.
+	/// If the arrangement is vertical, this stands for the number of rows.
+	/// </summary>
+
 	public int maxPerLine = 0;
+
+	/// <summary>
+	/// The width of each of the cells.
+	/// </summary>
+
 	public float cellWidth = 200f;
+
+	/// <summary>
+	/// The height of each of the cells.
+	/// </summary>
+
 	public float cellHeight = 200f;
+
+	/// <summary>
+	/// Reposition the children on the next Update().
+	/// </summary>
+
 	public bool repositionNow = false;
+
+	/// <summary>
+	/// Whether the children will be sorted alphabetically prior to repositioning.
+	/// </summary>
+
 	public bool sorted = false;
+
+	/// <summary>
+	/// Whether to ignore the disabled children or to treat them as being present.
+	/// </summary>
+
 	public bool hideInactive = true;
 
 	bool mStarted = false;
@@ -34,6 +70,9 @@ public class UIGrid : MonoBehaviour
 	void Start ()
 	{
 		mStarted = true;
+#if UNITY_EDITOR
+		if (Application.isPlaying)
+#endif
 		Reposition();
 	}
 
@@ -72,14 +111,15 @@ public class UIGrid : MonoBehaviour
 			for (int i = 0; i < myTrans.childCount; ++i)
 			{
 				Transform t = myTrans.GetChild(i);
-				if (t) list.Add(t);
+				if (t && (!hideInactive || NGUITools.GetActive(t.gameObject))) list.Add(t);
 			}
 			list.Sort(SortByName);
 
 			for (int i = 0, imax = list.Count; i < imax; ++i)
 			{
 				Transform t = list[i];
-				if (!t.gameObject.active && hideInactive) continue;
+
+				if (!NGUITools.GetActive(t.gameObject) && hideInactive) continue;
 
 				float depth = t.localPosition.z;
 				t.localPosition = (arrangement == Arrangement.Horizontal) ?
@@ -99,7 +139,7 @@ public class UIGrid : MonoBehaviour
 			{
 				Transform t = myTrans.GetChild(i);
 
-				if (!t.gameObject.active && hideInactive) continue;
+				if (!NGUITools.GetActive(t.gameObject) && hideInactive) continue;
 
 				float depth = t.localPosition.z;
 				t.localPosition = (arrangement == Arrangement.Horizontal) ?

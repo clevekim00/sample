@@ -1,6 +1,6 @@
 //----------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2012 Tasharen Entertainment
+// Copyright Â© 2011-2013 Tasharen Entertainment
 //----------------------------------------------
 
 using UnityEngine;
@@ -11,7 +11,7 @@ using System.Collections;
 /// </summary>
 
 [AddComponentMenu("NGUI/Interaction/Drag Object")]
-public class UIDragObject : IgnoreTimeScale
+public class UIDragObject : MonoBehaviour
 {
 	public enum DragEffect
 	{
@@ -63,6 +63,8 @@ public class UIDragObject : IgnoreTimeScale
 	Vector3 mMomentum = Vector3.zero;
 	float mScroll = 0f;
 	Bounds mBounds;
+	int mTouchID = 0;
+	bool mStarted = false;
 
 	/// <summary>
 	/// Find the panel responsible for this object.
@@ -80,35 +82,36 @@ public class UIDragObject : IgnoreTimeScale
 
 	void OnPress (bool pressed)
 	{
-		if (enabled && gameObject.active && target != null)
+		if (enabled && NGUITools.GetActive(gameObject) && target != null)
 		{
-			mPressed = pressed;
-
 			if (pressed)
 			{
-				if (restrictWithinPanel && mPanel == null) FindPanel();
+				if (!mPressed)
+				{
+					// Remove all momentum on press
+					mTouchID = UICamera.currentTouchID;
+					mMomentum = Vector3.zero;
+					mPressed = true;
+					mStarted = false;
+					mScroll = 0f;
 
-				// Calculate the bounds
-				if (restrictWithinPanel) mBounds = NGUIMath.CalculateRelativeWidgetBounds(mPanel.cachedTransform, target);
+					if (restrictWithinPanel && mPanel == null) FindPanel();
+					if (restrictWithinPanel) mBounds = NGUIMath.CalculateRelativeWidgetBounds(mPanel.cachedTransform, target);
 
-				// Remove all momentum on press
-				mMomentum = Vector3.zero;
-				mScroll = 0f;
+					// Disable the spring movement
+					SpringPosition sp = target.GetComponent<SpringPosition>();
+					if (sp != null) sp.enabled = false;
 
-				// Disable the spring movement
-				SpringPosition sp = target.GetComponent<SpringPosition>();
-				if (sp != null) sp.enabled = false;
-
-				// Remember the hit position
-				mLastPos = UICamera.lastHit.point;
-
-				// Create the plane to drag along
-				Transform trans = UICamera.currentCamera.transform;
-				mPlane = new Plane((mPanel != null ? mPanel.cachedTransform.rotation : trans.rotation) * Vector3.back, mLastPos);
+					// Create the plane to drag along
+					Transform trans = UICamera.currentCamera.transform;
+					mPlane = new Plane((mPanel != null ? mPanel.cachedTransform.rotation : trans.rotation) * Vector3.back, UICamera.lastHit.point);
+				}
 			}
-			else if (restrictWithinPanel && mPanel.clipping != UIDrawCall.Clipping.None && dragEffect == DragEffect.MomentumAndSpring)
+			else if (mPressed && mTouchID == UICamera.currentTouchID)
 			{
-				mPanel.ConstrainTargetToBounds(target, ref mBounds, false);
+				mPressed = false;
+				if (restrictWithinPanel && mPanel.clipping != UIDrawCall.Clipping.None && dragEffect == DragEffect.MomentumAndSpring)
+					mPanel.ConstrainTargetToBounds(target, ref mBounds, false);
 			}
 		}
 	}
@@ -119,7 +122,7 @@ public class UIDragObject : IgnoreTimeScale
 
 	void OnDrag (Vector2 delta)
 	{
-		if (enabled && gameObject.active && target != null)
+		if (mPressed && mTouchID == UICamera.currentTouchID && enabled && NGUITools.GetActive(gameObject) && target != null)
 		{
 			UICamera.currentTouch.clickNotification = UICamera.ClickNotification.BasedOnDelta;
 
@@ -132,6 +135,12 @@ public class UIDragObject : IgnoreTimeScale
 				Vector3 offset = currentPos - mLastPos;
 				mLastPos = currentPos;
 
+				if (!mStarted)
+				{
+					mStarted = true;
+					offset = Vector3.zero;
+				}
+
 				if (offset.x != 0f || offset.y != 0f)
 				{
 					offset = target.InverseTransformDirection(offset);
@@ -140,7 +149,7 @@ public class UIDragObject : IgnoreTimeScale
 				}
 
 				// Adjust the momentum
-				mMomentum = Vector3.Lerp(mMomentum, mMomentum + offset * (0.01f * momentumAmount), 0.67f);
+				if (dragEffect != DragEffect.None) mMomentum = Vector3.Lerp(mMomentum, mMomentum + offset * (0.01f * momentumAmount), 0.67f);
 
 				// We want to constrain the UI to be within bounds
 				if (restrictWithinPanel)
@@ -173,7 +182,7 @@ public class UIDragObject : IgnoreTimeScale
 
 	void LateUpdate ()
 	{
-		float delta = UpdateRealTimeDelta();
+		float delta = RealTime.deltaTime;
 		if (target == null) return;
 
 		if (mPressed)
@@ -223,7 +232,7 @@ public class UIDragObject : IgnoreTimeScale
 
 	void OnScroll (float delta)
 	{
-		if (enabled && gameObject.active)
+		if (enabled && NGUITools.GetActive(gameObject))
 		{
 			if (Mathf.Sign(mScroll) != Mathf.Sign(delta)) mScroll = 0f;
 			mScroll += delta * scrollWheelFactor;

@@ -1,10 +1,11 @@
 //----------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2012 Tasharen Entertainment
+// Copyright Â© 2011-2013 Tasharen Entertainment
 //----------------------------------------------
 
 using UnityEngine;
 using System.Collections.Generic;
+using System.Text;
 
 /// <summary>
 /// Text list can be used with a UILabel to create a scrollable multi-line text field that's
@@ -22,7 +23,6 @@ public class UITextList : MonoBehaviour
 
 	public Style style = Style.Text;
 	public UILabel textLabel;
-	public float maxWidth = 0f;
 	public float maxHeight = 0f;
 	public int maxEntries = 50;
 	public bool supportScrollWheel = true;
@@ -80,12 +80,15 @@ public class UITextList : MonoBehaviour
 		if (textLabel != null && textLabel.font != null)
 		{
 			// Rebuild the line
-			ce.lines = textLabel.font.WrapText(ce.text, maxWidth / textLabel.transform.localScale.y,
-				textLabel.multiLine, textLabel.supportEncoding, textLabel.symbolStyle).Split(mSeparator);
+			string line;
+			textLabel.font.WrapText(ce.text, out line, textLabel.width, 100000,
+				0, textLabel.supportEncoding, textLabel.symbolStyle);
+			ce.lines = line.Split(mSeparator);
 
 			// Recalculate the total number of lines
 			mTotalLines = 0;
-			for (int i = 0, imax = mParagraphs.Count; i < imax; ++i) mTotalLines += mParagraphs[i].lines.Length;
+			for (int i = 0, imax = mParagraphs.Count; i < imax; ++i)
+				mTotalLines += mParagraphs[i].lines.Length;
 		}
 
 		// Update the visible text
@@ -99,7 +102,6 @@ public class UITextList : MonoBehaviour
 	void Awake ()
 	{
 		if (textLabel == null) textLabel = GetComponentInChildren<UILabel>();
-		if (textLabel != null) textLabel.lineWidth = 0;
 
 		Collider col = collider;
 
@@ -107,7 +109,6 @@ public class UITextList : MonoBehaviour
 		{
 			// Automatically set the width and height based on the collider
 			if (maxHeight <= 0f) maxHeight = col.bounds.size.y / transform.lossyScale.y;
-			if (maxWidth  <= 0f) maxWidth  = col.bounds.size.x / transform.lossyScale.x;
 		}
 	}
 
@@ -125,12 +126,12 @@ public class UITextList : MonoBehaviour
 	{
 		if (textLabel != null)
 		{
-			UIFont font = (UIFont)textLabel.font;
+			UIFont font = textLabel.font;
 
 			if (font != null)
 			{
 				int lines = 0;
-				int maxLines = maxHeight > 0 ? Mathf.FloorToInt(maxHeight / textLabel.cachedTransform.localScale.y) : 100000;
+				int maxLines = maxHeight > 0 ? Mathf.FloorToInt(maxHeight / (textLabel.font.size * textLabel.font.pixelSize)) : 100000;
 				int offset = Mathf.RoundToInt(mScroll);
 
 				// Don't let scrolling to exceed the visible number of lines
@@ -145,7 +146,7 @@ public class UITextList : MonoBehaviour
 					offset = Mathf.Max(0, mTotalLines - maxLines - offset);
 				}
 
-				string final = "";
+				StringBuilder final = new StringBuilder();
 
 				for (int i = 0, imax = mParagraphs.Count; i < imax; ++i)
 				{
@@ -161,15 +162,15 @@ public class UITextList : MonoBehaviour
 						}
 						else
 						{
-							if (final.Length > 0) final += "\n";
-							final += s;
+							if (final.Length > 0) final.Append("\n");
+							final.Append(s);
 							++lines;
 							if (lines >= maxLines) break;
 						}
 					}
 					if (lines >= maxLines) break;
 				}
-				textLabel.text = final;
+				textLabel.text = final.ToString();
 			}
 		}
 	}

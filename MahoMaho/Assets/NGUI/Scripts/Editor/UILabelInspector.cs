@@ -1,6 +1,6 @@
-﻿//----------------------------------------------
+//----------------------------------------------
 //            NGUI: Next-Gen UI kit
-// Copyright © 2011-2012 Tasharen Entertainment
+// Copyright © 2011-2013 Tasharen Entertainment
 //----------------------------------------------
 
 using UnityEngine;
@@ -37,73 +37,87 @@ public class UILabelInspector : UIWidgetInspector
 		}
 	}
 
-	override protected void OnInit () { mAllowPreview = false; }
-
-	override protected bool OnDrawProperties ()
+	protected override bool DrawProperties ()
 	{
 		mLabel = mWidget as UILabel;
-		ComponentSelector.Draw<UIFont>(mLabel.font as UIFont, OnSelectFont);
-		if (mLabel.font == null) return false;
+		ComponentSelector.Draw<UIFont>(mLabel.font, OnSelectFont);
 
-		GUI.skin.textArea.wordWrap = true;
-		string text = string.IsNullOrEmpty(mLabel.text) ? "" : mLabel.text;
-		text = EditorGUILayout.TextArea(mLabel.text, GUI.skin.textArea, GUILayout.Height(100f));
-		if (!text.Equals(mLabel.text)) { RegisterUndo(); mLabel.text = text; }
-
-		GUILayout.BeginHorizontal();
+		if (mLabel.font != null)
 		{
-			int len = EditorGUILayout.IntField("Line Width", mLabel.lineWidth, GUILayout.Width(120f));
-			if (len != mLabel.lineWidth) { RegisterUndo(); mLabel.lineWidth = len; }
+			GUI.skin.textArea.wordWrap = true;
+			string text = string.IsNullOrEmpty(mLabel.text) ? "" : mLabel.text;
+			text = EditorGUILayout.TextArea(mLabel.text, GUI.skin.textArea, GUILayout.Height(100f));
+			if (!text.Equals(mLabel.text)) { RegisterUndo(); mLabel.text = text; }
 
-			bool multi = EditorGUILayout.Toggle("Multi-line", mLabel.multiLine, GUILayout.Width(100f));
-			if (multi != mLabel.multiLine) { RegisterUndo(); mLabel.multiLine = multi; }
-		}
-		GUILayout.EndHorizontal();
+			UILabel.Overflow ov = (UILabel.Overflow)EditorGUILayout.EnumPopup("Overflow", mLabel.overflowMethod);
+			if (ov != mLabel.overflowMethod) { RegisterUndo(); mLabel.overflowMethod = ov; }
 
-		GUILayout.BeginHorizontal();
+			// Only input fields need this setting exposed, and they have their own "is password" setting, so hiding it here.
+			//GUILayout.BeginHorizontal();
+			//bool password = EditorGUILayout.Toggle("Password", mLabel.password, GUILayout.Width(100f));
+			//GUILayout.Label("- hide characters");
+			//GUILayout.EndHorizontal();
+			//if (password != mLabel.password) { RegisterUndo(); mLabel.password = password; }
 
-		bool password = EditorGUILayout.Toggle("Password", mLabel.password, GUILayout.Width(120f));
-		if (password != mLabel.password) { RegisterUndo(); mLabel.password = password; }
+			GUILayout.BeginHorizontal();
+			bool encoding = EditorGUILayout.Toggle("Encoding", mLabel.supportEncoding, GUILayout.Width(100f));
+			GUILayout.Label("use emoticons and colors");
+			GUILayout.EndHorizontal();
+			if (encoding != mLabel.supportEncoding) { RegisterUndo(); mLabel.supportEncoding = encoding; }
 
-		bool encoding = EditorGUILayout.Toggle("Encoding", mLabel.supportEncoding, GUILayout.Width(100f));
-		if (encoding != mLabel.supportEncoding) { RegisterUndo(); mLabel.supportEncoding = encoding; }
+			//GUILayout.EndHorizontal();
 
-		GUILayout.EndHorizontal();
-
-		if (encoding)
-		{
-			UIFont.SymbolStyle sym = (UIFont.SymbolStyle)EditorGUILayout.EnumPopup("Symbols", mLabel.symbolStyle, GUILayout.Width(170f));
-			if (sym != mLabel.symbolStyle) { RegisterUndo(); mLabel.symbolStyle = sym; }
-		}
-
-		GUILayout.BeginHorizontal();
-		{
-			UILabel.Effect effect = (UILabel.Effect)EditorGUILayout.EnumPopup("Effect", mLabel.effectStyle, GUILayout.Width(170f));
-			if (effect != mLabel.effectStyle) { RegisterUndo(); mLabel.effectStyle = effect; }
-
-			if (effect != UILabel.Effect.None)
+			if (encoding && mLabel.font.hasSymbols)
 			{
-				Color c = EditorGUILayout.ColorField(mLabel.effectColor);
-				if (mLabel.effectColor != c) { RegisterUndo(); mLabel.effectColor = c; }
+				UIFont.SymbolStyle sym = (UIFont.SymbolStyle)EditorGUILayout.EnumPopup("Symbols", mLabel.symbolStyle, GUILayout.Width(170f));
+				if (sym != mLabel.symbolStyle) { RegisterUndo(); mLabel.symbolStyle = sym; }
 			}
+
+			GUILayout.BeginHorizontal();
+			{
+				UILabel.Effect effect = (UILabel.Effect)EditorGUILayout.EnumPopup("Effect", mLabel.effectStyle, GUILayout.Width(170f));
+				if (effect != mLabel.effectStyle) { RegisterUndo(); mLabel.effectStyle = effect; }
+
+				if (effect != UILabel.Effect.None)
+				{
+					Color c = EditorGUILayout.ColorField(mLabel.effectColor);
+					if (mLabel.effectColor != c) { RegisterUndo(); mLabel.effectColor = c; }
+				}
+			}
+			GUILayout.EndHorizontal();
+
+			if (mLabel.effectStyle != UILabel.Effect.None)
+			{
+#if UNITY_3_5 || UNITY_4_0 || UNITY_4_1 || UNITY_4_2
+				GUILayout.Label("Distance", GUILayout.Width(70f));
+				GUILayout.Space(-34f);
+				GUILayout.BeginHorizontal();
+				GUILayout.Space(70f);
+				Vector2 offset = EditorGUILayout.Vector2Field("", mLabel.effectDistance);
+				GUILayout.Space(20f);
+				GUILayout.EndHorizontal();
+#else
+				Vector2 offset = mLabel.effectDistance;
+
+				GUILayout.BeginHorizontal();
+				GUILayout.Label("Distance", GUILayout.Width(76f));
+				offset.x = EditorGUILayout.FloatField(offset.x);
+				offset.y = EditorGUILayout.FloatField(offset.y);
+				GUILayout.Space(18f);
+				GUILayout.EndHorizontal();
+#endif
+				if (offset != mLabel.effectDistance)
+				{
+					RegisterUndo();
+					mLabel.effectDistance = offset;
+				}
+			}
+
+			int count = EditorGUILayout.IntField("Max Lines", mLabel.maxLineCount, GUILayout.Width(100f));
+			if (count != mLabel.maxLineCount) { RegisterUndo(); mLabel.maxLineCount = count; }
+			return true;
 		}
-		GUILayout.EndHorizontal();
-		return true;
-	}
-
-	override protected void OnDrawTexture ()
-	{
-		Texture2D tex = mLabel.mainTexture as Texture2D;
-
-		if (tex != null)
-		{
-			// Draw the atlas
-			EditorGUILayout.Separator();
-			NGUIEditorTools.DrawSprite(tex, mLabel.font.uvRect, mUseShader ? mLabel.font.material : null);
-
-			// Sprite size label
-			Rect rect = GUILayoutUtility.GetRect(Screen.width, 18f);
-			EditorGUI.DropShadowLabel(rect, "Font Size: " + mLabel.font.size);
-		}
+		EditorGUILayout.Space();
+		return false;
 	}
 }
